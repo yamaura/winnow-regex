@@ -203,11 +203,14 @@ where
     match re.captures_read(&mut locs, hay) {
         Some(m) if m.start() == 0 => {
             let len = m.end();
-            //Ok((input.next_slice(len), locs))
-            Ok(Captures {
-                slice: input.next_slice(len),
-                locs,
-            })
+            if PARTIAL && input.is_partial() && input.eof_offset() == m.end() {
+                Err(E::incomplete(input, Needed::Unknown))
+            } else {
+                Ok(Captures {
+                    slice: input.next_slice(len),
+                    locs,
+                })
+            }
         }
         _ if PARTIAL && input.is_partial() => Err(E::incomplete(input, Needed::Unknown)),
         _ => Err(ParserError::from_input(input)),
