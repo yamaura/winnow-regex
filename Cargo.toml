@@ -1,0 +1,27 @@
+[package]
+name = "winnow-regex"
+version = "0.1.0"
+edition = "2024"
+
+authors = ["Yuki Yamaura <ymruki@gmail.com>"]
+license = "MIT"
+description = "A set of winnow parsers backed by the regex crate"
+homepage = "https://github.com/yamaura/winnow-regex"
+repository = "https://github.com/yamaura/winnow-regex"
+readme = "README.md"
+keywords = []
+categories = []
+
+[dependencies]
+regex = "1"
+thiserror = "2"
+winnow = "0.7.9"
+
+[metadata.release]
+push = false
+tag-name = "{{version}}"
+pre-release-commit-message = "Bump version to {{version}}"
+tag-message = "{{tag_name}}"
+
+[metadata.docs.rs]
+all-features = true
