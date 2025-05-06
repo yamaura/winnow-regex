@@ -9,6 +9,12 @@ use winnow::{
     stream::{Offset, Stream, StreamIsPartial},
 };
 
+#[derive(Debug, Clone, thiserror::Error)]
+#[error(transparent)]
+pub enum Error {
+    Regex(#[from] regex::Error),
+}
+
 /// A trait representing types that can be converted into a compiled [`Regex`] pattern.
 ///
 /// This is used by the `regex` parser to generically accept either a `&str` or an already-compiled
@@ -23,12 +29,6 @@ use winnow::{
 ///
 /// - `try_into_regex(self) -> Result<Regex, Self::Error>`: Attempts to compile or convert
 ///   the input into a [`Regex`] object.
-#[derive(Debug, Clone, thiserror::Error)]
-#[error(transparent)]
-pub enum Error {
-    Regex(#[from] regex::Error),
-}
-
 pub trait RegexPattern {
     type Error;
 
