@@ -60,18 +60,6 @@ impl RegexPattern for Regex {
     }
 }
 
-pub struct Match<'h, T: ?Sized> {
-    hay: &'h T,
-    start: usize,
-    end: usize,
-}
-
-impl<'h> Match<'h, str> {
-    pub fn as_str(&self) -> &'h str {
-        &self.hay[self.start..self.end]
-    }
-}
-
 pub struct Captures<Slice> {
     slice: Slice,
     locs: regex::CaptureLocations,
