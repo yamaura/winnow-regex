@@ -168,7 +168,7 @@ where
 /// assert_eq!(digits.parse_peek("11x42abc"), Ok(("abc", (11, 42))));
 /// ```
 #[inline(always)]
-pub fn captures<'m, Input, Re, Error>(
+pub fn captures<Input, Re, Error>(
     re: Re,
 ) -> impl Parser<Input, Captures<<Input as Stream>::Slice>, Error>
 where
