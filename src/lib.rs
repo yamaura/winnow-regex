@@ -1,9 +1,11 @@
 #![doc = include_str!("../README.md")]
 pub use winnow;
 
+pub mod bytes;
 pub mod regex_trait;
 
 use core::fmt::Debug;
+use core::ops::{Index, Range};
 use regex_trait::*;
 use winnow::{
     Parser,
@@ -36,6 +38,19 @@ pub trait RegexPattern {
     type Output;
 
     fn try_into_regex(self) -> Result<Self::Output, Self::Error>;
+
+    /// Converts the pattern into a regex, panicking if it fails.
+    /// ## Panics
+    ///
+    /// Panics if the regex pattern fails to compile.
+    fn into_regex(self) -> Self::Output
+    where
+        Self: Sized,
+        Self::Error: Debug,
+    {
+        self.try_into_regex()
+            .unwrap_or_else(|e| panic!("failed to compile regex for bytes parser: {:?}", e))
+    }
 }
 
 impl RegexPattern for &str {
@@ -98,17 +113,15 @@ where
 
 impl<Slice, L> core::ops::Index<usize> for Captures<Slice, L>
 where
-    Slice: AsRef<str>,
+    Slice: AsRef<L::Input>,
     L: CaptureLocations,
+    L::Input: Index<Range<usize>, Output = L::Input>,
 {
-    type Output = str;
+    type Output = L::Input;
 
     fn index(&self, i: usize) -> &Self::Output {
-        if let Some((start, end)) = self.locs.get(i) {
-            &self.as_ref()[start..end]
-        } else {
-            panic!("index out of bounds")
-        }
+        let (start, end) = self.locs.get(i).expect("index out of bounds");
+        &self.slice.as_ref()[start..end]
     }
 }
 
@@ -203,17 +216,15 @@ where
 /// assert!(word.parse_peek("!hello").is_err());
 /// ```
 #[inline(always)]
-//pub fn regex<Input, Re, Error>(re: Re) -> impl Parser<Input, <Input as Stream>::Slice, Error>
 pub fn regex<'h, Input, Re, Error>(re: Re) -> RegexParser<'h, Input, Re::Output, Error>
 where
     Input: StreamIsPartial + Stream + Offset + Clone,
     Re: RegexPattern,
-    //Re::Output: Regex,
     Re::Output: Regex<Haystack<'h> = <Input as Stream>::Slice>,
     Re::Error: Debug,
     Error: ParserError<Input> + 'static,
 {
-    let re = re.try_into_regex().expect("regex compile error");
+    let re = re.into_regex();
 
     RegexParser {
         re,
@@ -227,7 +238,7 @@ where
 /// use winnow_regex::{captures, Captures};
 ///
 /// fn digits<'i>(s: &mut &'i str) -> ModalResult<(i32, i32)> {
-///    captures(r"^(\d+)x(\d+)").map(|c| (c[1].parse().unwrap(), c[2].parse().unwrap())).parse_next(s)
+///    captures(r"^(\d+)x(\d+)").map(|c: Captures<&str, _>| (c[1].parse().unwrap(), c[2].parse().unwrap())).parse_next(s)
 /// }
 ///
 /// assert_eq!(digits.parse_peek("11x42abc"), Ok(("abc", (11, 42))));
@@ -235,13 +246,13 @@ where
 #[inline(always)]
 pub fn captures<'h, Input, Re, Error>(re: Re) -> CapturesParser<'h, Input, Re::Output, Error>
 where
-    Input: StreamIsPartial + Stream + Offset,
+    Input: StreamIsPartial + Stream + Offset + Clone,
     Re: RegexPattern,
     Re::Output: Regex,
     Re::Error: Debug,
     Error: ParserError<Input> + 'static,
 {
-    let re = re.try_into_regex().expect("regex compile error");
+    let re = re.into_regex();
 
     CapturesParser {
         re,

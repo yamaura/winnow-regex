@@ -3,11 +3,13 @@
 /// for more details
 #[allow(clippy::len_without_is_empty)]
 pub trait CaptureLocations {
+    type Input: ?Sized;
     fn get(&self, i: usize) -> Option<(usize, usize)>;
     fn len(&self) -> usize;
 }
 
 impl CaptureLocations for regex::CaptureLocations {
+    type Input = str;
     #[inline]
     fn get(&self, i: usize) -> Option<(usize, usize)> {
         regex::CaptureLocations::get(self, i)
@@ -20,6 +22,7 @@ impl CaptureLocations for regex::CaptureLocations {
 }
 
 impl CaptureLocations for regex::bytes::CaptureLocations {
+    type Input = [u8];
     #[inline]
     fn get(&self, i: usize) -> Option<(usize, usize)> {
         regex::bytes::CaptureLocations::get(self, i)
