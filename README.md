@@ -34,7 +34,7 @@ use winnow_regex::{captures, Captures};
 fn dims<'i>(input: &mut &'i str) -> ModalResult<(i32, i32)> {
     // captures two number groups: width and height
     captures(r"^(\d+)x(\d+)")
-        .map(|caps: Captures<_>| {
+        .map(|caps| {
             let w: i32 = caps[1].parse().unwrap();
             let h: i32 = caps[2].parse().unwrap();
             (w, h)

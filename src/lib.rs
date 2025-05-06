@@ -68,23 +68,38 @@ impl RegexPattern for regex::Regex {
     }
 }
 
-pub struct Captures<Slice> {
-    slice: Slice,
-    locs: regex::CaptureLocations,
+impl RegexPattern for regex::bytes::Regex {
+    type Error = Error;
+    type Output = regex::bytes::Regex;
+
+    #[inline(always)]
+    fn try_into_regex(self) -> Result<Self::Output, Self::Error> {
+        Ok(self)
+    }
 }
 
-impl<Slice, T: ?Sized> AsRef<T> for Captures<Slice>
+pub struct Captures<Slice, L>
+where
+    L: CaptureLocations,
+{
+    slice: Slice,
+    locs: L,
+}
+
+impl<Slice, L, T: ?Sized> AsRef<T> for Captures<Slice, L>
 where
     Slice: AsRef<T>,
+    L: CaptureLocations,
 {
     fn as_ref(&self) -> &T {
         self.slice.as_ref()
     }
 }
 
-impl<Slice> core::ops::Index<usize> for Captures<Slice>
+impl<Slice, L> core::ops::Index<usize> for Captures<Slice, L>
 where
     Slice: AsRef<str>,
+    L: CaptureLocations,
 {
     type Output = str;
 
@@ -133,13 +148,17 @@ where
     _marker: core::marker::PhantomData<(&'h (), I, E)>,
 }
 
-impl<'h, I, R, E> Parser<I, Captures<<I as Stream>::Slice>, E> for CapturesParser<'h, I, R, E>
+impl<'h, I, R, E> Parser<I, Captures<<I as Stream>::Slice, R::CaptureLocations>, E>
+    for CapturesParser<'h, I, R, E>
 where
     I: Stream + StreamIsPartial + Offset + Clone,
     R: Regex<Haystack<'h> = <I as Stream>::Slice>,
     E: ParserError<I>,
 {
-    fn parse_next(&mut self, input: &mut I) -> Result<Captures<<I as Stream>::Slice>, E> {
+    fn parse_next(
+        &mut self,
+        input: &mut I,
+    ) -> Result<Captures<<I as Stream>::Slice, R::CaptureLocations>, E> {
         if <I as StreamIsPartial>::is_partial_supported() {
             captures_impl::<_, _, _, true>(input, &self.re)
         } else {
@@ -233,7 +252,7 @@ where
 fn captures_impl<'h, I, Re, E, const PARTIAL: bool>(
     input: &mut I,
     re: &Re,
-) -> Result<Captures<<I as Stream>::Slice>, E>
+) -> Result<Captures<<I as Stream>::Slice, Re::CaptureLocations>, E>
 where
     I: Stream + StreamIsPartial + Offset + Clone,
     Re: Regex<Haystack<'h> = <I as Stream>::Slice>,
@@ -262,7 +281,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use winnow::error::EmptyError;
+    use winnow::error::{ContextError, EmptyError, ErrMode};
     use winnow::prelude::*;
 
     #[test]
@@ -289,6 +308,22 @@ mod tests {
             .parse_next(&mut s)
             .unwrap();
         assert_eq!(re, "あいう");
+    }
+
+    #[test]
+    fn partial() {
+        use winnow::stream::Partial;
+        fn partial<'i>(i: &mut Partial<&'i [u8]>) -> ModalResult<&'i [u8], ContextError> {
+            regex(regex::bytes::Regex::new(r"^\d+").unwrap()).parse_next(i)
+        }
+        assert_eq!(
+            partial.parse_peek(Partial::new(&b"123abc"[..])),
+            Ok((Partial::new(&b"abc"[..]), &b"123"[..]))
+        );
+        assert_eq!(
+            partial.parse_peek(Partial::new(&b"123"[..])),
+            Err(ErrMode::Incomplete(Needed::Unknown))
+        );
     }
 
     #[test]
