@@ -2,7 +2,6 @@
 pub use winnow;
 
 use core::fmt::Debug;
-use regex::Regex;
 use winnow::{
     Parser,
     error::{Needed, ParserError},
@@ -32,30 +31,30 @@ pub enum Error {
 pub trait RegexPattern {
     type Error;
 
-    fn try_into_regex(self) -> Result<Regex, Self::Error>;
+    fn try_into_regex(self) -> Result<regex::Regex, Self::Error>;
 }
 
 impl RegexPattern for &str {
     type Error = Error;
 
     #[inline]
-    fn try_into_regex(self) -> Result<Regex, Self::Error> {
-        Ok(Regex::new(self)?)
+    fn try_into_regex(self) -> Result<regex::Regex, Self::Error> {
+        Ok(regex::Regex::new(self)?)
     }
 }
 
 impl RegexPattern for String {
     type Error = Error;
-    fn try_into_regex(self) -> Result<Regex, Self::Error> {
-        Ok(Regex::new(&self)?)
+    fn try_into_regex(self) -> Result<regex::Regex, Self::Error> {
+        Ok(regex::Regex::new(&self)?)
     }
 }
 
-impl RegexPattern for Regex {
+impl RegexPattern for regex::Regex {
     type Error = Error;
 
     #[inline]
-    fn try_into_regex(self) -> Result<Regex, Self::Error> {
+    fn try_into_regex(self) -> Result<regex::Regex, Self::Error> {
         Ok(self)
     }
 }
@@ -179,7 +178,7 @@ where
 
 fn captures_impl<I, E, const PARTIAL: bool>(
     input: &mut I,
-    re: &Regex,
+    re: &regex::Regex,
 ) -> Result<Captures<<I as Stream>::Slice>, E>
 where
     I: Stream + StreamIsPartial + AsRef<str> + Offset,
@@ -230,7 +229,7 @@ mod tests {
 
     #[test]
     fn test_re() {
-        let re = Regex::new(r"\d+").unwrap();
+        let re = regex::Regex::new(r"\d+").unwrap();
         assert!(re.find_at("1abc123", 0).is_some());
         assert!(re.find_at("1abc123", 1).is_some());
         assert!(re.find("abc123").is_some());
